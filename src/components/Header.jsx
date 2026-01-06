@@ -33,7 +33,7 @@ const Header = () => {
                     <img
                         src="/logo.png"
                         alt="The Metal Store"
-                        className="h-16 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                        className={`${isScrolled ? 'h-10' : 'h-16'} w-auto object-contain transition-all duration-300 group-hover:scale-105`}
                     />
                     {/* Fallback text if needed, but logo image is preferred */}
                     {/* <span className={`text-xl font-bold tracking-tight ${isScrolled ? 'text-metallic-900' : 'text-white'}`}>THE METAL STORE</span> */}
