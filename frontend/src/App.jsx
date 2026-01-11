@@ -16,6 +16,7 @@ import CheckoutSuccess from './pages/CheckoutSuccess';
 import { initAnalytics, trackPageView } from './utils/analytics';
 import SEO from './components/SEO';
 import { CartProvider } from './context/CartContext';
+import { AuthProvider } from './context/AuthContext';
 import CartDrawer from './components/CartDrawer';
 
 // Component to handle page view tracking based on route changes
@@ -36,30 +37,31 @@ const AnalyticsTracker = () => {
 function App() {
   return (
     <HelmetProvider>
-      <CartProvider>
-        <Router>
-          <AnalyticsTracker />
-          <SEO /> {/* Default SEO Tags */}
-          <CartDrawer />
-          <Routes>
-            <Route path="/" element={<MainLayout />}>
-              <Route index element={<Home />} />
-              <Route path="work" element={<OurWork />} />
-              <Route path="work/:id" element={<ProjectDetail />} />
-              <Route path="inspiration" element={<Inspiration />} />
-              <Route path="inspiration/:categoryId" element={<InspirationCategory />} />
-              <Route path="store" element={<Store />} />
-              <Route path="store/product/:id" element={<StoreProductDetail />} />
-              <Route path="about" element={<AboutUs />} />
-              <Route path="calculator" element={<Calculator />} />
-            </Route>
-            <Route path="/checkout/success" element={<CheckoutSuccess />} />
-          </Routes>
+      <AuthProvider>
+        <CartProvider>
+          <Router>
+            <AnalyticsTracker />
+            <SEO /> {/* Default SEO Tags */}
+            <CartDrawer />
+            <Routes>
+              <Route path="/" element={<MainLayout />}>
+                <Route index element={<Home />} />
+                <Route path="work" element={<OurWork />} />
+                <Route path="work/:id" element={<ProjectDetail />} />
+                <Route path="inspiration" element={<Inspiration />} />
+                <Route path="inspiration/:categoryId" element={<InspirationCategory />} />
+                <Route path="store" element={<Store />} />
+                <Route path="store/product/:id" element={<StoreProductDetail />} />
+                <Route path="about" element={<AboutUs />} />
+                <Route path="calculator" element={<Calculator />} />
+              </Route>
+              <Route path="/checkout/success" element={<CheckoutSuccess />} />
+            </Routes>
 
-          {/* Floating WhatsApp Button */}
+            {/* Floating WhatsApp Button */}
 
-          <ChatWidget />
-          {/* Floating WhatsApp Button (Replaced by ChatWidget)
+            <ChatWidget />
+            {/* Floating WhatsApp Button (Replaced by ChatWidget)
           <a
             href="https://wa.me/919316723563"
             target="_blank"
@@ -81,8 +83,9 @@ function App() {
           </a>
           */}
 
-        </Router>
-      </CartProvider>
+          </Router>
+        </CartProvider>
+      </AuthProvider>
     </HelmetProvider>
   );
 }
