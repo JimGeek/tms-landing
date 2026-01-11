@@ -14,7 +14,7 @@ const CartDrawer = () => {
         try {
             // 1. Create Order on Backend
             const productIds = cartItems.map(item => item.id);
-            const response = await fetch('http://localhost:8000/api/orders/create/', {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/orders/create/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ product_ids: productIds })
@@ -36,7 +36,7 @@ const CartDrawer = () => {
                 handler: async function (response) {
                     // 3. Verify Payment
                     try {
-                        const verifyRes = await fetch('http://localhost:8000/api/orders/verify/', {
+                        const verifyRes = await fetch(`${import.meta.env.VITE_API_URL}/api/orders/verify/`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
