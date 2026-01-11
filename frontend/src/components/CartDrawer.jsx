@@ -22,7 +22,8 @@ const CartDrawer = () => {
 
             if (!response.ok) throw new Error('Failed to create order');
 
-            const orderData = await response.json();
+            const envelope = await response.json();
+            const orderData = envelope.data;
 
             // 2. Open RazorPay Modal
             const options = {

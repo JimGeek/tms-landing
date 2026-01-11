@@ -20,10 +20,11 @@ const LoginModal = ({ isOpen, onClose }) => {
                 body: JSON.stringify({ phone: phoneNumber })
             });
             const data = await response.json();
-            if (response.ok) {
+            if (response.ok && data.success) {
                 setStep('otp');
             } else {
-                alert(data.error || 'Failed to send OTP');
+                const errorMsg = data.errors?.[0] || data.error || 'Failed to send OTP';
+                alert(typeof errorMsg === 'object' ? JSON.stringify(errorMsg) : errorMsg);
             }
         } catch (error) {
             console.error(error);
@@ -43,11 +44,12 @@ const LoginModal = ({ isOpen, onClose }) => {
                 body: JSON.stringify({ phone: phoneNumber, code: otp })
             });
             const data = await response.json();
-            if (response.ok) {
-                login(data);
+            if (response.ok && data.success) {
+                login(data.data); // login expects the actual user/token data
                 onClose();
             } else {
-                alert(data.error || 'Invalid OTP');
+                const errorMsg = data.errors?.[0] || data.error || 'Invalid OTP';
+                alert(typeof errorMsg === 'object' ? JSON.stringify(errorMsg) : errorMsg);
             }
         } catch (error) {
             console.error(error);

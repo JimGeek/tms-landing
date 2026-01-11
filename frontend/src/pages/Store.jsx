@@ -23,9 +23,12 @@ const Store = ({ isPage = true }) => {
                 const prodData = await prodRes.json();
                 const catData = await catRes.json();
 
-                // Handle pagination if present
-                const productList = Array.isArray(prodData) ? prodData : (prodData.results || []);
-                const categoryList = Array.isArray(catData) ? catData : (catData.results || []);
+                // Handle EnvelopeJSONRenderer ( { success: true, data: [...] } )
+                const actualProdData = prodData.data !== undefined ? prodData.data : prodData;
+                const actualCatData = catData.data !== undefined ? catData.data : catData;
+
+                const productList = Array.isArray(actualProdData) ? actualProdData : (actualProdData.results || []);
+                const categoryList = Array.isArray(actualCatData) ? actualCatData : (actualCatData.results || []);
 
                 setProducts(productList);
                 setCategories(['All', ...categoryList.map(c => c.name)]);
