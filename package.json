@@ -1,0 +1,13 @@
+{
+    "name": "themetalstore-landing-root",
+    "version": "1.0.0",
+    "scripts": {
+        "install-frontend": "cd frontend && npm install",
+        "dev": "cd frontend && npm run dev",
+        "build": "cd frontend && npm install && npm run build",
+        "lint": "cd frontend && npm run lint"
+    },
+    "engines": {
+        "node": ">=20.0.0"
+    }
+}
