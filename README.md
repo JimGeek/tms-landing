@@ -1,16 +1,32 @@
-# React + Vite
+# The Metal Store Landing Page
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## 1. Purpose
+E-commerce platform for furniture and metal artifacts.
 
-Currently, two official plugins are available:
+## 2. System Context
+*   **Type**: Vite / React Application
+*   **Backend Connection**: Connects to `Genius Backend` (specifically the `ecommerce` module).
+*   **Brand Slug**: `themetalstore`
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 3. Key Locations
+*   **Entry**: `frontend/src/main.jsx` (Note the `frontend` subfolder).
+*   **Chat Widget**: `frontend/src/components/ChatWidget.jsx`
+*   **Product Logic**: Fetches from backend ecommerce endpoints.
 
-## React Compiler
+## 4. Development (Isolation)
+**Folder**: `themetalstore-landing/`
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Setup
+```bash
+cd frontend
+npm install
+# Ensure .env has:
+# VITE_API_URL=http://localhost:8000
+# VITE_BRAND_SLUG=themetalstore
+```
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Run
+```bash
+npm run dev -- --port 3005
+```
+Access at: `http://localhost:3005` or `https://themetal.store` (Production)
