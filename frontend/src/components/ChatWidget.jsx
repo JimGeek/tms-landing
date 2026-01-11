@@ -17,7 +17,7 @@ export function ChatWidget() {
     const scrollRef = useRef(null);
 
     // Hardcoded API URL for production/dev
-    const apiUrl = import.meta.env.VITE_API_URL || "https://api.superhomes.app";
+    const apiUrl = import.meta.env.VITE_API_URL;
     const brandSlug = import.meta.env.VITE_BRAND_SLUG || "themetalstore";
 
     useEffect(() => {
