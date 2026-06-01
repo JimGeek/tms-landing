@@ -51,7 +51,7 @@ function App() {
                 <Route path="inspiration" element={<Inspiration />} />
                 <Route path="inspiration/:categoryId" element={<InspirationCategory />} />
                 <Route path="store" element={<Store />} />
-                <Route path="store/product/:id" element={<StoreProductDetail />} />
+                <Route path="store/product/:slug" element={<StoreProductDetail />} />
                 <Route path="about" element={<AboutUs />} />
                 <Route path="calculator" element={<Calculator />} />
               </Route>
