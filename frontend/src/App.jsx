@@ -17,7 +17,9 @@ import { initAnalytics, trackPageView } from './utils/analytics';
 import SEO from './components/SEO';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
+import { EnquiryProvider } from './context/EnquiryContext';
 import CartDrawer from './components/CartDrawer';
+import EnquiryModal from './components/EnquiryModal';
 
 // Component to handle page view tracking based on route changes
 const AnalyticsTracker = () => {
@@ -39,10 +41,12 @@ function App() {
     <HelmetProvider>
       <AuthProvider>
         <CartProvider>
+          <EnquiryProvider>
           <Router>
             <AnalyticsTracker />
             <SEO /> {/* Default SEO Tags */}
             <CartDrawer />
+            <EnquiryModal />
             <Routes>
               <Route path="/" element={<MainLayout />}>
                 <Route index element={<Home />} />
@@ -84,6 +88,7 @@ function App() {
           */}
 
           </Router>
+          </EnquiryProvider>
         </CartProvider>
       </AuthProvider>
     </HelmetProvider>
