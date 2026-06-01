@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShoppingCart, ArrowLeft, Check, Truck, Shield, Box, View } from 'lucide-react';
-import { storeProducts } from '../data/store';
+import { fetchProduct } from '../api/store';
 import SEO from '../components/SEO';
 import { useCart } from '../context/CartContext';
 import Gate3D from '../components/Gate3D';
 
 const StoreProductDetail = () => {
-    const { id } = useParams();
+    const { slug } = useParams();
     const navigate = useNavigate();
     const { addToCart } = useCart();
 
@@ -16,30 +16,33 @@ const StoreProductDetail = () => {
     const [selections, setSelections] = useState({});
     const [viewMode, setViewMode] = useState('image'); // 'image' or '3d'
     const [price, setPrice] = useState('');
+    const [notFound, setNotFound] = useState(false);
 
     useEffect(() => {
-        const found = storeProducts.find(p => p.id === parseInt(id));
-        if (found) {
+        let active = true;
+        fetchProduct(slug).then(found => {
+            if (!active) return;
+            if (!found) { setNotFound(true); return; }
             setProduct(found);
-            setPrice(found.price); // Set initial price
+            setPrice(found.displayPrice);
 
-            // Initialize selections with first option
             const initialSelections = {};
-            if (found.customizationOptions) {
-                found.customizationOptions.forEach(opt => {
-                    initialSelections[opt.name] = opt.values[0];
-                });
-            }
+            (found.customizationOptions || []).forEach(opt => {
+                initialSelections[opt.name] = opt.values[0];
+            });
             setSelections(initialSelections);
 
-            // Default to 3D view if available and it's a Gate
-            if (found.has3D) {
-                setViewMode('3d');
-            }
-        } else {
-            navigate('/store');
-        }
-    }, [id, navigate]);
+            if (found.has3D) setViewMode('3d');
+        }).catch(() => { if (active) setNotFound(true); });
+        return () => { active = false; };
+    }, [slug]);
+
+    if (notFound) return (
+        <div className="pt-32 text-center">
+            <p className="text-xl font-bold mb-4">Product not found.</p>
+            <button onClick={() => navigate('/store')} className="text-black underline font-bold">Back to Store</button>
+        </div>
+    );
 
     if (!product) return <div className="pt-32 text-center text-xl font-bold">Loading...</div>;
 
@@ -62,10 +65,17 @@ const StoreProductDetail = () => {
 
         addToCart({
             ...product, // Base details
-            name: `${product.name} (${variantDesc})`,
+            name: variantDesc ? `${product.name} (${variantDesc})` : product.name,
             id: variantId,
+            price: product.displayPrice, // CartContext parses this string for totals
             selectedOptions: selections
         });
+    };
+
+    const handleRequestQuote = () => {
+        const opts = Object.entries(selections).map(([k, v]) => `${k}: ${v}`).join(', ');
+        const msg = `Hi, I'd like a quote for "${product.name}"${opts ? ` (${opts})` : ''}.`;
+        window.open(`https://wa.me/919316723563?text=${encodeURIComponent(msg)}`, '_blank');
     };
 
     return (
@@ -153,14 +163,25 @@ const StoreProductDetail = () => {
                         )}
 
                         <div className="flex flex-col gap-4 mb-8">
-                            <button
-                                onClick={handleAddToCart}
-                                className="w-full bg-black text-white py-4 rounded-xl font-bold hover:bg-metallic-900 transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-xl shadow-black/10"
-                            >
-                                <ShoppingCart size={20} /> Add to Order
-                            </button>
+                            {product.productType === 'made_to_order' ? (
+                                <button
+                                    onClick={handleRequestQuote}
+                                    className="w-full bg-black text-white py-4 rounded-xl font-bold hover:bg-metallic-900 transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-xl shadow-black/10"
+                                >
+                                    <ShoppingCart size={20} /> Request a Quote
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleAddToCart}
+                                    className="w-full bg-black text-white py-4 rounded-xl font-bold hover:bg-metallic-900 transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-xl shadow-black/10"
+                                >
+                                    <ShoppingCart size={20} /> Add to Order
+                                </button>
+                            )}
                             <p className="text-center text-xs text-gray-400">
-                                Secure payment via RazorPay • Free Shipping &gt; ₹50k
+                                {product.productType === 'made_to_order'
+                                    ? 'Custom fabrication • Our team will share a tailored quote'
+                                    : 'Secure payment via RazorPay • Free Shipping > ₹50k'}
                             </p>
                         </div>
 
