@@ -50,10 +50,10 @@ const Header = () => {
     };
 
     const navLinks = [
+        { name: 'Shop', href: '/' },
         { name: 'Our Work', href: '/work' },
         { name: 'Inspiration', href: '/inspiration' },
         { name: 'About', href: '/about' },
-        { name: 'Contact', href: '#contact' },
     ];
 
     const headerClass = !isHome || isScrolled || isMobileMenuOpen

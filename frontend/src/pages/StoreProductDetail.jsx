@@ -5,12 +5,14 @@ import { ShoppingCart, ArrowLeft, Check, Truck, Shield, Box, View } from 'lucide
 import { fetchProduct } from '../api/store';
 import SEO from '../components/SEO';
 import { useCart } from '../context/CartContext';
+import { useEnquiry } from '../context/EnquiryContext';
 import Gate3D from '../components/Gate3D';
 
 const StoreProductDetail = () => {
     const { slug } = useParams();
     const navigate = useNavigate();
     const { addToCart } = useCart();
+    const { openEnquiry } = useEnquiry();
 
     const [product, setProduct] = useState(null);
     const [selections, setSelections] = useState({});
@@ -73,9 +75,7 @@ const StoreProductDetail = () => {
     };
 
     const handleRequestQuote = () => {
-        const opts = Object.entries(selections).map(([k, v]) => `${k}: ${v}`).join(', ');
-        const msg = `Hi, I'd like a quote for "${product.name}"${opts ? ` (${opts})` : ''}.`;
-        window.open(`https://wa.me/919316723563?text=${encodeURIComponent(msg)}`, '_blank');
+        openEnquiry({ product: { name: product.name, slug: product.slug }, sourcePage: 'product-detail' });
     };
 
     return (

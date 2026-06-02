@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { ShoppingCart, MessageSquare, Filter, ArrowRight, Search } from 'lucide-react';
 import SEO from '../components/SEO';
 import { useCart } from '../context/CartContext';
+import { useEnquiry } from '../context/EnquiryContext';
 import { fetchProducts, fetchCategories } from '../api/store';
 
 const Store = ({ isPage = true }) => {
@@ -12,7 +13,9 @@ const Store = ({ isPage = true }) => {
     const [categories, setCategories] = useState(['All']);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [typeFilter, setTypeFilter] = useState('all'); // all | stock | made_to_order
     const { addToCart } = useCart();
+    const { openEnquiry } = useEnquiry();
 
     useEffect(() => {
         fetchCategories()
@@ -31,9 +34,11 @@ const Store = ({ isPage = true }) => {
         return () => clearTimeout(t);
     }, [search]);
 
-    const filteredProducts = selectedCategory === 'All'
-        ? products
-        : products.filter(p => p.category === selectedCategory);
+    const filteredProducts = products.filter(p => {
+        const catOk = selectedCategory === 'All' || p.category === selectedCategory;
+        const typeOk = typeFilter === 'all' || p.productType === typeFilter;
+        return catOk && typeOk;
+    });
 
     return (
         <div className={isPage ? "pt-24 min-h-screen bg-metallic-50" : "py-24 bg-white"}>
@@ -65,6 +70,21 @@ const Store = ({ isPage = true }) => {
                         placeholder="Search products..."
                         className="w-full bg-white border border-metallic-200 rounded-full py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-black/5"
                     />
+                </div>
+
+                {/* Type segment */}
+                <div className="flex justify-center mb-6">
+                    <div className="inline-flex bg-metallic-100 rounded-full p-1">
+                        {[['all', 'All'], ['stock', 'Products'], ['made_to_order', 'Services']].map(([val, label]) => (
+                            <button
+                                key={val}
+                                onClick={() => setTypeFilter(val)}
+                                className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${typeFilter === val ? 'bg-black text-white shadow' : 'text-metallic-600 hover:text-black'}`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Horizontal Filters */}
@@ -135,9 +155,18 @@ const Store = ({ isPage = true }) => {
                                                 <span className="text-xl font-bold text-black font-display">{item.displayPrice}</span>
                                             </div>
 
-                                            <div className="bg-black text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 group-hover:bg-metallic-800 transition-colors">
-                                                {item.productType === 'made_to_order' ? 'Enquire' : 'Buy Now'} <ArrowRight size={16} />
-                                            </div>
+                                            {item.productType === 'made_to_order' ? (
+                                                <button
+                                                    onClick={(e) => { e.preventDefault(); openEnquiry({ product: item, sourcePage: 'store-grid' }); }}
+                                                    className="bg-white text-black border border-black px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-black hover:text-white transition-colors"
+                                                >
+                                                    Get Quote <ArrowRight size={16} />
+                                                </button>
+                                            ) : (
+                                                <div className="bg-black text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 group-hover:bg-metallic-800 transition-colors">
+                                                    Buy Now <ArrowRight size={16} />
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </Link>
