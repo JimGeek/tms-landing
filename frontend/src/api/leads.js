@@ -1,6 +1,9 @@
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.superhomes.app';
 const BRAND = import.meta.env.VITE_BRAND_SLUG || 'themetalstore';
-const CAPTURE_KEY = import.meta.env.VITE_CAPTURE_KEY;
+// Public lead-capture key. Override via VITE_CAPTURE_KEY when the brand
+// admin rotates it (Phase 0.4 Brand admin → capture_key).
+const CAPTURE_KEY =
+  import.meta.env.VITE_CAPTURE_KEY || '8c664d67-b863-4f91-9a88-d19b4fdad88e';
 
 /**
  * Submit a website enquiry to the GeniusOS CRM capture endpoint.

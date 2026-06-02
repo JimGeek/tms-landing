@@ -2,82 +2,92 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2, Plus, Minus, ShoppingBag, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.superhomes.app';
+const BRAND_SLUG = import.meta.env.VITE_BRAND_SLUG || 'themetalstore';
 
 const CartDrawer = () => {
     const { cartItems, isCartOpen, setIsCartOpen, removeFromCart, updateQuantity, cartTotal, clearCart } = useCart();
+    const { user } = useAuth() || {};
     const navigate = useNavigate();
     const [isCheckingOut, setIsCheckingOut] = useState(false);
 
     const handleCheckout = async () => {
+        const accessToken = localStorage.getItem('tms_token');
+        if (!accessToken) {
+            alert('Please sign in before checking out.');
+            return;
+        }
         setIsCheckingOut(true);
         try {
-            // 1. Create Order on Backend
-            const productIds = cartItems.map(item => item.id);
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/orders/create/`, {
+            // 1. Create the payment intent against the unified GeniusOS Phase 4
+            //    endpoint. The server picks the amount (paise → /100 here is the
+            //    converse Razorpay does on its side; we send rupees).
+            const idempotencyKey = `tms-${user?.id ?? 'guest'}-${Date.now()}`;
+            const response = await fetch(`${API_URL}/api/v1/payments/razorpay/order`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ product_ids: productIds })
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    amount: cartTotal,
+                    receipt: `tms-cart-${idempotencyKey}`,
+                    idempotency_key: idempotencyKey,
+                    brand_descriptors: [BRAND_SLUG],
+                }),
             });
 
-            if (!response.ok) throw new Error('Failed to create order');
+            if (!response.ok) {
+                if (response.status === 503) {
+                    alert('Payments are temporarily unavailable. Please try again shortly.');
+                } else if (response.status === 401) {
+                    alert('Your session expired. Please sign in again.');
+                } else {
+                    alert('Could not start checkout. Please try again.');
+                }
+                throw new Error(`Phase 4 intent failed: ${response.status}`);
+            }
 
             const envelope = await response.json();
-            const orderData = envelope.data;
+            const intent = envelope.data ?? envelope;
 
-            // 2. Open RazorPay Modal
+            // 2. Open Razorpay Checkout. The Phase 4 webhook on the API server
+            //    will receive payment.captured and flip the PaymentTransaction
+            //    state — we don't need a client-side verify round trip anymore.
             const options = {
-                key: orderData.key_id,
-                amount: orderData.amount * 100, // paise
-                currency: orderData.currency,
-                name: "The Metal Store",
-                description: "Payment for Custom Metalwork",
-                image: "/logo.png",
-                order_id: orderData.razorpay_order_id,
-                handler: async function (response) {
-                    // 3. Verify Payment
-                    try {
-                        const verifyRes = await fetch(`${import.meta.env.VITE_API_URL}/api/orders/verify/`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                razorpay_order_id: response.razorpay_order_id,
-                                razorpay_payment_id: response.razorpay_payment_id,
-                                razorpay_signature: response.razorpay_signature
-                            })
-                        });
-
-                        if (verifyRes.ok) {
-                            clearCart();
-                            setIsCartOpen(false);
-                            navigate('/checkout/success');
-                        } else {
-                            alert('Payment Verification Failed');
-                        }
-                    } catch (error) {
-                        console.error(error);
-                        alert('Error Verifying Payment');
-                    }
+                key: intent.key_id,
+                amount: Number(intent.amount) * 100, // paise
+                currency: intent.currency,
+                name: 'The Metal Store',
+                description: 'Custom metalwork order',
+                image: '/logo.png',
+                order_id: intent.order_id,
+                handler: function () {
+                    // Razorpay's success callback runs once payment.authorized
+                    // fires. The server-side webhook is authoritative.
+                    clearCart();
+                    setIsCartOpen(false);
+                    navigate('/checkout/success');
                 },
                 prefill: {
-                    name: "Customer Name", // Should come from user context
-                    email: "customer@example.com",
-                    contact: "9999999999"
+                    name: user?.name || user?.username || '',
+                    email: user?.email || '',
+                    contact: user?.phone || '',
                 },
-                theme: {
-                    color: "#000000"
-                }
+                theme: { color: '#000000' },
             };
 
             const rzp1 = new window.Razorpay(options);
             rzp1.on('payment.failed', function (response) {
-                alert(response.error.description);
+                alert(response.error?.description || 'Payment failed');
             });
             rzp1.open();
-
         } catch (error) {
-            console.error(error);
-            alert('Checkout Failed. Please try again.');
+            // eslint-disable-next-line no-console
+            console.error('[TMS checkout]', error);
         } finally {
             setIsCheckingOut(false);
         }

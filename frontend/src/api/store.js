@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.superhomes.app';
 const BRAND = import.meta.env.VITE_BRAND_SLUG || 'themetalstore';
 
 function unwrap(json) {
