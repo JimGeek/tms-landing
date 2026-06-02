@@ -41,7 +41,7 @@ const Store = ({ isPage = true }) => {
     });
 
     return (
-        <div className={isPage ? "pt-24 min-h-screen bg-metallic-50" : "py-24 bg-white"}>
+        <div className={isPage ? "pt-24 min-h-screen bg-metallic-50" : "pt-10 pb-24 bg-white"}>
             {isPage && (
                 <SEO
                     title="Store & Services"
@@ -50,15 +50,17 @@ const Store = ({ isPage = true }) => {
             )}
             <div className="container mx-auto px-6">
 
-                {/* Header Section */}
-                <div className="text-center mb-12 max-w-3xl mx-auto">
-                    <h1 className="text-4xl md:text-5xl font-bold font-display mb-4 text-black">
-                        The Metal Store
-                    </h1>
-                    <p className="text-lg text-metallic-600">
-                        Explore our curated collection of premium hardware and customized fabrication services.
-                    </p>
-                </div>
+                {/* Header Section — only on the standalone /store page (Home has its own hero) */}
+                {isPage && (
+                    <div className="text-center mb-12 max-w-3xl mx-auto">
+                        <h1 className="text-4xl md:text-5xl font-bold font-display mb-4 text-black">
+                            The Metal Store
+                        </h1>
+                        <p className="text-lg text-metallic-600">
+                            Explore our curated collection of premium hardware and customized fabrication services.
+                        </p>
+                    </div>
+                )}
 
                 {/* Search */}
                 <div className="max-w-md mx-auto mb-8 relative">
