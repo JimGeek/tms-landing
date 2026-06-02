@@ -73,6 +73,12 @@ export interface GeniusSdkConfig {
     apiUrl: string;
     brandSlug: string;
     captureKey: string;
+    /**
+     * Origin of the SSO bridge (`https://auth.superhomes.app` in prod).
+     * Omit to disable cross-brand session sharing; the SDK still works
+     * for everything else when this is unset.
+     */
+    ssoOrigin?: string;
 }
 
 function unwrap<T>(json: unknown): T {
@@ -92,8 +98,23 @@ async function jsonOrThrow<T>(p: Promise<Response>): Promise<T> {
     return unwrap<T>(await res.json());
 }
 
+interface SsoTokenPayload {
+    access: string;
+    refresh: string;
+    issued_at?: number | null;
+}
+
+/**
+ * Phase 2 SSO helpers — implemented inline so a landing site doesn't need
+ * a separate module. All three are no-ops if `ssoOrigin` is unset.
+ *
+ *   bootstrapSso({ onToken, onNoSession }) — silent iframe check on app boot
+ *   pushToSso({ access, refresh, returnTo }) — call after a successful login
+ *   clearSso({ returnTo }) — call on logout
+ */
+
 export function createGeniusSdk(config: GeniusSdkConfig) {
-    const { apiUrl, brandSlug, captureKey } = config;
+    const { apiUrl, brandSlug, captureKey, ssoOrigin } = config;
     return {
         catalog(slug: string = brandSlug): Promise<CatalogResponse> {
             return jsonOrThrow<CatalogResponse>(
@@ -151,6 +172,96 @@ export function createGeniusSdk(config: GeniusSdkConfig) {
                     }),
                 }),
             );
+        },
+
+        /**
+         * Silent cross-brand SSO check. Embeds an invisible iframe pointing
+         * at `${ssoOrigin}/sso-check`; the iframe postMessages back whether
+         * there's an active central session. Always cleans up.
+         *
+         * Call this once on app boot. If the user is already locally
+         * authenticated, skip — the SDK does not check that itself
+         * because each landing site stores its local token differently.
+         */
+        bootstrapSso(args: {
+            onToken: (tokens: SsoTokenPayload) => void;
+            onNoSession?: () => void;
+            timeoutMs?: number;
+        }): void {
+            if (typeof window === 'undefined' || !ssoOrigin) {
+                args.onNoSession?.();
+                return;
+            }
+            let resolved = false;
+            const cleanup = (iframe: HTMLIFrameElement, listener: (e: MessageEvent) => void) => {
+                window.removeEventListener('message', listener);
+                if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+            };
+            const iframe = document.createElement('iframe');
+            iframe.setAttribute('aria-hidden', 'true');
+            iframe.style.position = 'absolute';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            iframe.style.visibility = 'hidden';
+            iframe.src = `${ssoOrigin}/sso-check`;
+            const listener = (event: MessageEvent) => {
+                // Critical: only trust messages from the SSO bridge origin.
+                if (event.origin !== ssoOrigin) return;
+                const data = event.data as { type?: string; access?: string; refresh?: string; issued_at?: number | null } | null;
+                if (!data || typeof data.type !== 'string') return;
+                if (resolved) return;
+                resolved = true;
+                if (data.type === 'geniusos_sso_token' && data.access && data.refresh) {
+                    args.onToken({
+                        access: data.access,
+                        refresh: data.refresh,
+                        issued_at: data.issued_at ?? null,
+                    });
+                } else {
+                    args.onNoSession?.();
+                }
+                cleanup(iframe, listener);
+            };
+            window.addEventListener('message', listener);
+            document.body.appendChild(iframe);
+            // Bounded wait: if the iframe never responds, treat as no session.
+            window.setTimeout(() => {
+                if (resolved) return;
+                resolved = true;
+                args.onNoSession?.();
+                cleanup(iframe, listener);
+            }, args.timeoutMs ?? 4000);
+        },
+
+        /**
+         * Push the local JWT pair to the central SSO bridge so other brand
+         * sites can pick it up on their next visit. Navigates the user
+         * briefly to `${ssoOrigin}/sso-set#access=…&refresh=…&return_to=…`;
+         * the bridge stores the tokens and bounces the user back.
+         *
+         * Call AFTER a successful login. If `ssoOrigin` is unset, this is
+         * a no-op — the brand site stays single-tenant.
+         */
+        pushToSso(args: { access: string; refresh: string; returnTo: string }): void {
+            if (typeof window === 'undefined' || !ssoOrigin) return;
+            const params = new URLSearchParams({
+                access: args.access,
+                refresh: args.refresh,
+                return_to: args.returnTo,
+            });
+            window.location.href = `${ssoOrigin}/sso-set#${params.toString()}`;
+        },
+
+        /**
+         * Tear down the central SSO session so a subsequent visit to any
+         * brand site doesn't silently re-login. Navigates to
+         * `${ssoOrigin}/sso-clear?return_to=…`.
+         */
+        clearSso(args: { returnTo: string }): void {
+            if (typeof window === 'undefined' || !ssoOrigin) return;
+            const params = new URLSearchParams({ return_to: args.returnTo });
+            window.location.href = `${ssoOrigin}/sso-clear?${params.toString()}`;
         },
     };
 }
