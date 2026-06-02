@@ -62,46 +62,49 @@ const Store = ({ isPage = true }) => {
                     </div>
                 )}
 
-                {/* Toolbar: search + type segment on one row */}
-                <div className="flex flex-col sm:flex-row gap-3 mb-5">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-metallic-400" size={18} />
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search products..."
-                            className="w-full bg-metallic-50 border border-metallic-200 rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-black/5"
-                        />
+                {/* Sticky filter bar — pins below the fixed header so filters stay reachable while scrolling */}
+                <div className="sticky top-[68px] z-40 -mx-6 px-6 py-4 mb-8 bg-white/90 backdrop-blur-md border-b border-metallic-100">
+                    {/* Toolbar: search + type segment on one row */}
+                    <div className="flex flex-col sm:flex-row gap-3 mb-3">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-metallic-400" size={18} />
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Search products..."
+                                className="w-full bg-metallic-50 border border-metallic-200 rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-black/5"
+                            />
+                        </div>
+                        <div className="inline-flex self-start sm:self-auto bg-metallic-100 rounded-xl p-1">
+                            {[['all', 'All'], ['stock', 'Products'], ['made_to_order', 'Services']].map(([val, label]) => (
+                                <button
+                                    key={val}
+                                    onClick={() => setTypeFilter(val)}
+                                    className={`px-5 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${typeFilter === val ? 'bg-black text-white shadow' : 'text-metallic-600 hover:text-black'}`}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                    <div className="inline-flex self-start sm:self-auto bg-metallic-100 rounded-xl p-1">
-                        {[['all', 'All'], ['stock', 'Products'], ['made_to_order', 'Services']].map(([val, label]) => (
+
+                    {/* Category chip line */}
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                        <span className="text-xs font-bold uppercase tracking-wider text-metallic-400 mr-1 shrink-0">Category</span>
+                        {categories.map(cat => (
                             <button
-                                key={val}
-                                onClick={() => setTypeFilter(val)}
-                                className={`px-5 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${typeFilter === val ? 'bg-black text-white shadow' : 'text-metallic-600 hover:text-black'}`}
+                                key={cat}
+                                onClick={() => setSelectedCategory(cat)}
+                                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all whitespace-nowrap border ${selectedCategory === cat
+                                    ? 'bg-black text-white border-black'
+                                    : 'bg-white text-metallic-600 border-metallic-200 hover:border-black hover:text-black'
+                                    }`}
                             >
-                                {label}
+                                {cat}
                             </button>
                         ))}
                     </div>
-                </div>
-
-                {/* Category chip line */}
-                <div className="flex items-center gap-2 mb-10 overflow-x-auto pb-2 no-scrollbar">
-                    <span className="text-xs font-bold uppercase tracking-wider text-metallic-400 mr-1 shrink-0">Category</span>
-                    {categories.map(cat => (
-                        <button
-                            key={cat}
-                            onClick={() => setSelectedCategory(cat)}
-                            className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all whitespace-nowrap border ${selectedCategory === cat
-                                ? 'bg-black text-white border-black'
-                                : 'bg-white text-metallic-600 border-metallic-200 hover:border-black hover:text-black'
-                                }`}
-                        >
-                            {cat}
-                        </button>
-                    ))}
                 </div>
 
                 {/* Product Grid */}
