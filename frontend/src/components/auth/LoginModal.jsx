@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Phone, ArrowRight, Loader } from 'lucide-react';
+import { X, ArrowRight, Loader } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-const TRUST_CHIPS = ['Made-To-Order', 'Custom Metal', 'In-House Fabrication'];
-const PHONE_DISPLAY = '+91 99099 12345';
-const PHONE_TEL = '+919909912345';
+const HERO_IMAGE = '/hero-bg.png';
+const HERO_PILL = 'CUSTOM METAL FABRICATION';
+const HERO_TITLE = 'Sign in to track your custom build.';
+const HERO_SUBTITLE =
+    'Made-to-order metal work — gates, grills, staircases, swings. Fabricated in-house. Zero middlemen.';
+const HERO_STATS = [
+    { value: 'Custom', label: 'Made-to-Order' },
+    { value: 'In-House', label: 'Fabrication' },
+    { value: '100+', label: 'Projects' },
+];
 
 const LoginModal = ({ isOpen, onClose }) => {
     const [step, setStep] = useState('phone'); // phone, otp
@@ -21,7 +28,7 @@ const LoginModal = ({ isOpen, onClose }) => {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/auth/otp/send/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: phoneNumber })
+                body: JSON.stringify({ phone: phoneNumber }),
             });
             const data = await response.json();
             if (response.ok && data.success) {
@@ -45,7 +52,7 @@ const LoginModal = ({ isOpen, onClose }) => {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/auth/otp/verify/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: phoneNumber, code: otp })
+                body: JSON.stringify({ phone: phoneNumber, code: otp }),
             });
             const data = await response.json();
             if (response.ok && data.success) {
@@ -67,72 +74,96 @@ const LoginModal = ({ isOpen, onClose }) => {
 
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-white rounded-2xl w-full max-w-md overflow-hidden relative shadow-2xl"
+                    initial={{ opacity: 0, scale: 0.97, y: 12 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.97, y: 12 }}
+                    transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                    className="relative grid grid-cols-1 md:grid-cols-2 w-full max-w-[880px] bg-white rounded-[22px] overflow-hidden shadow-2xl ring-1 ring-black/5 min-h-[540px]"
                 >
-                    {/* Metallic accent bar */}
-                    <div
-                        aria-hidden="true"
-                        className="h-1 w-full bg-gradient-to-r from-metallic-700 via-metallic-900 to-metallic-700"
-                    />
-
                     <button
                         onClick={onClose}
-                        className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
                         aria-label="Close"
+                        className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-black/10 hover:bg-black/15 text-white md:text-gray-700 flex items-center justify-center"
                     >
-                        <X size={20} />
+                        <X size={16} />
                     </button>
 
-                    <div className="px-8 pt-8 pb-6">
-                        <span className="inline-block text-[11px] font-bold tracking-[0.16em] uppercase text-metallic-700 mb-3">
-                            The Metal Store
+                    {/* LEFT pane — hero photo + brand stats */}
+                    <div
+                        aria-hidden="true"
+                        className="relative overflow-hidden min-h-[200px] md:min-h-[540px] p-6 md:p-8 flex flex-col justify-between text-white"
+                    >
+                        <div
+                            className="absolute inset-0"
+                            style={{
+                                backgroundImage: `url(${HERO_IMAGE})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                            }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/50 to-black/85" />
+
+                        <div className="relative z-10 font-bold text-lg tracking-[0.12em] font-display">
+                            THE METAL STORE
+                        </div>
+
+                        <div className="relative z-10">
+                            <span className="inline-block px-3.5 py-1.5 rounded-full bg-gradient-to-b from-metallic-700 to-metallic-900 text-white text-[11px] font-bold tracking-[0.12em] uppercase mb-3.5">
+                                {HERO_PILL}
+                            </span>
+                            <h3 className="text-[22px] md:text-[28px] font-bold leading-tight tracking-tight text-white font-display mb-2.5">
+                                {HERO_TITLE}
+                            </h3>
+                            <p className="text-[13px] text-white/85 leading-relaxed mb-6">
+                                {HERO_SUBTITLE}
+                            </p>
+                            <div className="flex gap-4 md:gap-7">
+                                {HERO_STATS.map((s) => (
+                                    <div key={s.label}>
+                                        <div className="text-[18px] md:text-[22px] font-bold text-white tracking-tight font-display">
+                                            {s.value}
+                                        </div>
+                                        <div className="text-[11px] text-white/70 tracking-wide mt-0.5">
+                                            {s.label}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* RIGHT pane — form */}
+                    <div className="p-9 overflow-y-auto">
+                        <span className="block text-[10px] font-bold tracking-[0.18em] uppercase text-gray-500 mb-2.5">
+                            Sign in or sign up
                         </span>
-                        <h2 className="text-[26px] font-bold font-display leading-tight tracking-tight mb-2">
+                        <h2 className="text-[24px] font-bold leading-tight tracking-tight text-gray-900 font-display mb-2">
                             {step === 'phone' ? 'Welcome.' : 'Verify your phone'}
                         </h2>
-                        <p className="text-gray-500 text-sm leading-relaxed">
+                        <p className="text-[13px] text-gray-500 leading-relaxed">
                             {step === 'phone'
                                 ? "Phone-only. We'll text you a 6-digit code. New here? An account is created automatically."
                                 : `We sent a 6-digit code to ${phoneNumber}.`}
                         </p>
 
-                        {step === 'phone' && (
-                            <div className="flex flex-wrap gap-2 mt-5">
-                                {TRUST_CHIPS.map((chip) => (
-                                    <span
-                                        key={chip}
-                                        className="text-xs font-semibold px-3 py-1.5 rounded-full bg-metallic-100 text-metallic-800"
-                                    >
-                                        {chip}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-
                         <div className="mt-6">
                             {step === 'phone' ? (
-                                <form onSubmit={handleSendOtp} className="space-y-4">
-                                    <div>
-                                        <label className="block text-[11px] font-bold tracking-[0.12em] uppercase text-gray-500 mb-2">
-                                            Phone Number
-                                        </label>
-                                        <div className="relative">
-                                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                            <input
-                                                type="tel"
-                                                required
-                                                placeholder="+91 98765 43210"
-                                                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 pl-12 pr-4 font-medium focus:outline-none focus:border-metallic-800 focus:ring-2 focus:ring-metallic-900/10 transition"
-                                                value={phoneNumber}
-                                                onChange={(e) => setPhoneNumber(e.target.value)}
-                                                autoFocus
-                                            />
+                                <form onSubmit={handleSendOtp} className="space-y-3.5">
+                                    <div className="flex items-stretch rounded-xl border border-gray-200 focus-within:border-metallic-800 focus-within:ring-2 focus-within:ring-metallic-900/10 overflow-hidden bg-gray-50">
+                                        <div className="px-4 flex items-center font-semibold text-gray-600 border-r border-gray-200">
+                                            +91
                                         </div>
+                                        <input
+                                            type="tel"
+                                            required
+                                            placeholder="98765 43210"
+                                            className="flex-1 bg-transparent py-3.5 px-4 font-medium focus:outline-none"
+                                            value={phoneNumber}
+                                            onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                                            autoFocus
+                                        />
                                     </div>
                                     <button
                                         type="submit"
@@ -146,34 +177,29 @@ const LoginModal = ({ isOpen, onClose }) => {
                                     </p>
                                 </form>
                             ) : (
-                                <form onSubmit={handleVerifyOtp} className="space-y-4">
-                                    <div>
-                                        <label className="block text-[11px] font-bold tracking-[0.12em] uppercase text-gray-500 mb-2">
-                                            6-Digit Code
-                                        </label>
-                                        <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            pattern="[0-9]*"
-                                            required
-                                            maxLength={6}
-                                            placeholder="123456"
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-4 px-4 text-center text-2xl font-bold tracking-[0.4em] focus:outline-none focus:border-metallic-800 focus:ring-2 focus:ring-metallic-900/10 transition"
-                                            value={otp}
-                                            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                                            autoFocus
-                                        />
-                                        <p className="text-center text-sm text-gray-500 mt-2">
-                                            Sent to {phoneNumber}{' '}
-                                            <button
-                                                type="button"
-                                                onClick={() => { setStep('phone'); setOtp(''); }}
-                                                className="text-metallic-900 font-bold hover:underline"
-                                            >
-                                                Change
-                                            </button>
-                                        </p>
-                                    </div>
+                                <form onSubmit={handleVerifyOtp} className="space-y-3.5">
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        required
+                                        maxLength={6}
+                                        placeholder="123456"
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-4 px-4 text-center text-2xl font-bold tracking-[0.4em] focus:outline-none focus:border-metallic-800 focus:ring-2 focus:ring-metallic-900/10 transition"
+                                        value={otp}
+                                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                                        autoFocus
+                                    />
+                                    <p className="text-center text-sm text-gray-500">
+                                        Sent to +91 {phoneNumber}{' '}
+                                        <button
+                                            type="button"
+                                            onClick={() => { setStep('phone'); setOtp(''); }}
+                                            className="text-metallic-900 font-bold hover:underline"
+                                        >
+                                            Change
+                                        </button>
+                                    </p>
                                     <button
                                         type="submit"
                                         disabled={loading || otp.length !== 6}
@@ -184,22 +210,13 @@ const LoginModal = ({ isOpen, onClose }) => {
                                 </form>
                             )}
                         </div>
-                    </div>
 
-                    {step === 'phone' && (
-                        <div className="px-8 pb-6 text-center">
-                            <div className="text-[11px] text-gray-400 mb-3">100% privacy guaranteed. No spam.</div>
-                            <div className="border-t border-gray-100 pt-4 text-sm text-gray-500">
-                                Or call us:{' '}
-                                <a
-                                    href={`tel:${PHONE_TEL}`}
-                                    className="text-metallic-900 font-semibold no-underline hover:underline"
-                                >
-                                    {PHONE_DISPLAY}
-                                </a>
+                        {step === 'phone' && (
+                            <div className="mt-6 pt-4 border-t border-gray-100 text-center text-[13px] text-gray-500">
+                                No spam. No pushy sales. Just honest advice.
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </motion.div>
             </div>
         </AnimatePresence>
