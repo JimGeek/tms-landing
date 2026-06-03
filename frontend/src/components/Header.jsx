@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, User, ShoppingBag, Phone } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import LoginModal from './auth/LoginModal';
-import { useCart } from '../context/CartContext';
+import { useCart } from '../lib/cart/cartStore.js';
 
 const Header = () => {
     const [isScrolled, setIsScrolled] = useState(false);
@@ -11,7 +11,9 @@ const Header = () => {
     const [isLoginOpen, setIsLoginOpen] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
-    const { setIsCartOpen, cartItems } = useCart();
+    const openDrawer = useCart((s) => s.openDrawer);
+    const cartCount = useCart((s) => s.itemCount());
+    const setIsCartOpen = () => openDrawer();
 
     useEffect(() => {
         const handleScroll = () => {
@@ -65,8 +67,6 @@ const Header = () => {
         : 'text-white hover:text-metallic-300';
 
     const logoSizeClass = !isHome || isScrolled ? 'h-10' : 'h-16';
-
-    const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
     return (
         <>
