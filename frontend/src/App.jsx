@@ -15,10 +15,9 @@ import Calculator from './pages/Calculator';
 import CheckoutSuccess from './pages/CheckoutSuccess';
 import { initAnalytics, trackPageView } from './utils/analytics';
 import SEO from './components/SEO';
-import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { EnquiryProvider } from './context/EnquiryContext';
-import CartDrawer from './components/CartDrawer';
+import { CartDrawer } from './components/cart/CartDrawer.jsx';
 import EnquiryModal from './components/EnquiryModal';
 
 // Component to handle page view tracking based on route changes
@@ -40,8 +39,7 @@ function App() {
   return (
     <HelmetProvider>
       <AuthProvider>
-        <CartProvider>
-          <EnquiryProvider>
+        <EnquiryProvider>
           <Router>
             <AnalyticsTracker />
             <SEO /> {/* Default SEO Tags */}
@@ -88,8 +86,7 @@ function App() {
           */}
 
           </Router>
-          </EnquiryProvider>
-        </CartProvider>
+        </EnquiryProvider>
       </AuthProvider>
     </HelmetProvider>
   );
