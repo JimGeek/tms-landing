@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { createGeniusSdk } from '../lib/geniusSdk';
+import { useCart } from '../lib/cart/cartStore.js';
 
 const AuthContext = createContext();
 
@@ -21,15 +22,29 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
+    const [accessToken, setAccessTokenState] = useState(() => {
+        if (typeof window === 'undefined') return null;
+        return localStorage.getItem('tms_token');
+    });
     const [loading, setLoading] = useState(true);
+
+    // Helper that keeps localStorage + state in sync for the access token.
+    const setAccessToken = (token) => {
+        if (token) {
+            localStorage.setItem('tms_token', token);
+        } else {
+            localStorage.removeItem('tms_token');
+        }
+        setAccessTokenState(token);
+    };
 
     // Pull the user profile from /auth/me/ given an access token. Used to
     // hydrate `user` when we rehydrate the session from SSO without a
     // locally-cached user record.
-    const hydrateUserFromToken = async (accessToken) => {
+    const hydrateUserFromToken = async (token) => {
         try {
             const res = await fetch(`${API_URL}/api/v1/auth/me/`, {
-                headers: { Authorization: `Bearer ${accessToken}` },
+                headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) return null;
             const wrapped = await res.json();
@@ -48,6 +63,8 @@ export const AuthProvider = ({ children }) => {
             try {
                 setUser(JSON.parse(storedUser));
                 setLoading(false);
+                // Pull the latest cart for this signed-in session.
+                useCart.getState().fetchCart(storedToken).catch(() => {});
                 return;
             } catch (e) {
                 // eslint-disable-next-line no-console
@@ -63,12 +80,24 @@ export const AuthProvider = ({ children }) => {
             onToken: async ({ access, refresh }) => {
                 localStorage.setItem('tms_token', access);
                 if (refresh) localStorage.setItem('tms_refresh_token', refresh);
+                setAccessTokenState(access);
                 const profile = await hydrateUserFromToken(access);
                 if (profile) {
                     setUser(profile);
                     localStorage.setItem('tms_user', JSON.stringify(profile));
                 }
                 setLoading(false);
+                // Merge any anonymous device cart into the contact cart, then
+                // fetch the live cart so the drawer renders the merged state.
+                (async () => {
+                    try {
+                        await useCart.getState().mergeDeviceCart(access);
+                    } catch (e) {
+                        // eslint-disable-next-line no-console
+                        console.warn('Cart merge failed', e);
+                    }
+                    useCart.getState().fetchCart(access).catch(() => {});
+                })();
             },
             onNoSession: () => setLoading(false),
         });
@@ -82,7 +111,10 @@ export const AuthProvider = ({ children }) => {
             setUser(data.user);
             localStorage.setItem('tms_user', JSON.stringify(data.user));
         }
-        if (access) localStorage.setItem('tms_token', access);
+        if (access) {
+            localStorage.setItem('tms_token', access);
+            setAccessTokenState(access);
+        }
         if (refresh) localStorage.setItem('tms_refresh_token', refresh);
 
         // Push to central SSO so other brand sites pick it up silently.
@@ -95,6 +127,19 @@ export const AuthProvider = ({ children }) => {
                 returnTo: options.returnTo || window.location.href,
             });
         }
+
+        // Merge any anonymous device cart into the contact cart, then refresh.
+        if (access) {
+            (async () => {
+                try {
+                    await useCart.getState().mergeDeviceCart(access);
+                } catch (e) {
+                    // eslint-disable-next-line no-console
+                    console.warn('Cart merge failed', e);
+                }
+                useCart.getState().fetchCart(access).catch(() => {});
+            })();
+        }
     };
 
     const logout = (options = {}) => {
@@ -102,14 +147,17 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('tms_user');
         localStorage.removeItem('tms_token');
         localStorage.removeItem('tms_refresh_token');
+        setAccessTokenState(null);
         // Tear down the central session too, otherwise the next visit to
         // any brand site will silently sign the user back in.
         if (options.clearSso !== false) {
             sdk.clearSso({ returnTo: options.returnTo || window.location.origin });
         }
+        // Refresh the cart so the UI immediately reflects the anonymous state.
+        useCart.getState().fetchCart(null).catch(() => {});
     };
 
-    const value = { user, login, logout, loading };
+    const value = { user, accessToken, login, logout, loading, setAccessToken };
 
     return (
         <AuthContext.Provider value={value}>
