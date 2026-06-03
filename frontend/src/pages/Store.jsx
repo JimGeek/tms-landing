@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, MessageSquare, Filter, ArrowRight, Search } from 'lucide-react';
 import SEO from '../components/SEO';
-import { useCart } from '../context/CartContext';
 import { useEnquiry } from '../context/EnquiryContext';
 import { fetchProducts, fetchCategories } from '../api/store';
 
@@ -14,7 +13,6 @@ const Store = ({ isPage = true }) => {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [typeFilter, setTypeFilter] = useState('all'); // all | stock | made_to_order
-    const { addToCart } = useCart();
     const { openEnquiry } = useEnquiry();
 
     useEffect(() => {

@@ -4,14 +4,17 @@ import { motion } from 'framer-motion';
 import { ShoppingCart, ArrowLeft, Check, Truck, Shield, Box, View } from 'lucide-react';
 import { fetchProduct } from '../api/store';
 import SEO from '../components/SEO';
-import { useCart } from '../context/CartContext';
+import { useCart } from '../lib/cart/cartStore.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import { useEnquiry } from '../context/EnquiryContext';
 import Gate3D from '../components/Gate3D';
 
 const StoreProductDetail = () => {
     const { slug } = useParams();
     const navigate = useNavigate();
-    const { addToCart } = useCart();
+    const addItem = useCart((s) => s.addItem);
+    const openDrawer = useCart((s) => s.openDrawer);
+    const { accessToken } = useAuth() || {};
     const { openEnquiry } = useEnquiry();
 
     const [product, setProduct] = useState(null);
@@ -60,18 +63,21 @@ const StoreProductDetail = () => {
         setSelections(prev => ({ ...prev, [optionName]: value }));
     };
 
-    const handleAddToCart = () => {
-        // Create descriptive string of selections
-        const variantDesc = Object.entries(selections).map(([k, v]) => `${k}: ${v}`).join(', ');
-        const variantId = `${product.id}-${Object.values(selections).join('-')}`;
-
-        addToCart({
-            ...product, // Base details
-            name: variantDesc ? `${product.name} (${variantDesc})` : product.name,
-            id: variantId,
-            price: product.displayPrice, // CartContext parses this string for totals
-            selectedOptions: selections
-        });
+    const handleAddToCart = async () => {
+        try {
+            await addItem({
+                kind: 'product',
+                source_model: 'ecommerce.Product',
+                source_id: product.id,
+                qty: 1,
+                config: selections,
+            }, accessToken);
+            openDrawer();
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error('Add to cart failed', e);
+            alert(e?.detail?.errors?.[0]?.message || 'Could not add to cart');
+        }
     };
 
     const handleRequestQuote = () => {
