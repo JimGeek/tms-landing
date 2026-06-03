@@ -1,12 +1,37 @@
-import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useCart } from '../../lib/cart/cartStore.js';
+import { cartApi } from '../../lib/cart/cartApi.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { CartLine } from './CartLine.jsx';
 
+const CHECKOUT_URL = import.meta.env.VITE_CHECKOUT_URL || 'https://superhomes.app/checkout';
+
 export function CartDrawer() {
   const { cart, drawerOpen: open, closeDrawer: close, refresh, patchItem, removeItem } = useCart();
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
+  const [checkingOut, setCheckingOut] = useState(false);
+
+  const startCheckout = async () => {
+    if (!accessToken) {
+      alert('Please sign in to checkout.');
+      return;
+    }
+    setCheckingOut(true);
+    try {
+      const res = await cartApi.checkout(
+        {
+          customer: { name: user?.name, phone: user?.phone, email: user?.email },
+          channel: 'brand_site',
+          return_to_url: `${window.location.origin}/checkout/success`,
+        },
+        accessToken,
+      );
+      window.location.href = `${CHECKOUT_URL}?session=${res.checkout_session_id}#access=${encodeURIComponent(accessToken)}`;
+    } catch (e) {
+      setCheckingOut(false);
+      alert(e?.detail?.code === 'CART_EMPTY' ? 'Cart is empty.' : (e?.detail?.message || 'Could not start checkout. Please try again.'));
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -57,12 +82,13 @@ export function CartDrawer() {
           <div className="border-t border-slate-100 px-6 py-4 bg-white/60">
             <div className="flex justify-between text-sm mb-1"><span className="text-slate-500">Subtotal</span><span>{inr(totals.subtotal)}</span></div>
             <div className="flex justify-between text-sm font-bold mb-3"><span>Due now</span><span className="text-superhomes-500">{inr(totals.due_now)}</span></div>
-            <Link
-              to="/cart" onClick={close}
-              className="block text-center bg-superhomes-500 hover:bg-superhomes-600 text-white rounded-xl px-5 py-3.5 font-bold text-sm"
+            <button
+              onClick={startCheckout}
+              disabled={checkingOut}
+              className="block w-full text-center bg-superhomes-500 hover:bg-superhomes-600 disabled:opacity-60 text-white rounded-xl px-5 py-3.5 font-bold text-sm"
             >
-              Proceed · Pay {inr(totals.due_now)}
-            </Link>
+              {checkingOut ? 'Starting checkout…' : `Proceed · Pay ${inr(totals.due_now)}`}
+            </button>
           </div>
         )}
       </aside>
