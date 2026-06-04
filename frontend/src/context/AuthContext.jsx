@@ -107,9 +107,21 @@ export const AuthProvider = ({ children }) => {
         const access = data.access;
         const refresh = data.refresh;
 
-        if (data.user) {
-            setUser(data.user);
-            localStorage.setItem('tms_user', JSON.stringify(data.user));
+        // The OTP verify response shape from /api/v1/auth/otp/verify/ is
+        // {access, refresh, contact_id, name, phone, email, pincode,
+        // address, profile_complete} — the profile fields live at the top
+        // level alongside the tokens, NOT nested under `data.user`. Older
+        // code expected `data.user` and silently dropped the profile when
+        // it was missing, leaving the header in logged-out state even
+        // though the tokens were stored. Mirror the Marvel/JB/Vantage
+        // pattern: destructure access+refresh, treat the rest as the user.
+        const { access: _a, refresh: _r, ...profileFields } = data;
+        const profile = data.user ?? (
+            profileFields.contact_id !== undefined ? profileFields : null
+        );
+        if (profile) {
+            setUser(profile);
+            localStorage.setItem('tms_user', JSON.stringify(profile));
         }
         if (access) {
             localStorage.setItem('tms_token', access);
