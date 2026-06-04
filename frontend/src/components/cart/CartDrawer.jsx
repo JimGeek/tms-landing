@@ -4,7 +4,12 @@ import { cartApi } from '../../lib/cart/cartApi.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { CartLine } from './CartLine.jsx';
 
-const CHECKOUT_URL = import.meta.env.VITE_CHECKOUT_URL || 'https://superhomes.app/checkout';
+// Use the canonical www host directly. Vercel's apex→www 307 redirect
+// strips the URL fragment (where we pack the access token), so going
+// through superhomes.app loses #access=… by the time the hosted
+// checkout React app reads it. Hitting www.* directly preserves the
+// fragment in the browser.
+const CHECKOUT_URL = import.meta.env.VITE_CHECKOUT_URL || 'https://www.superhomes.app/checkout';
 
 export function CartDrawer() {
   const { cart, drawerOpen: open, closeDrawer: close, refresh, patchItem, removeItem } = useCart();
