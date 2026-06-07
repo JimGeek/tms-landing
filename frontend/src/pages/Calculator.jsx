@@ -306,7 +306,7 @@ const Calculator = () => {
                                             </div>
                                         )}
                                     </div>
-                                    <button onClick={() => { setShowQuote(false); setEstimate(null); }} className="mt-4 w-full text-center text-gray-500 underline">
+                                    <button onClick={() => { setShowQuote(false); setEstimate(null); setQuotationId(null); setSubmitError(''); }} className="mt-4 w-full text-center text-gray-500 underline">
                                         Edit Configuration
                                     </button>
                                 </motion.div>
