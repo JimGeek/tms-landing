@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Ruler, CheckCircle2, Calculator as CalcIcon, RefreshCw, ArrowRight, ArrowLeft } from 'lucide-react';
 import Gate3D from '../components/Gate3D'; // We will create this next
 import SEO from '../components/SEO';
 import { computePrice } from '../lib/computePrice';
+
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.superhomes.app';
+const CAPTURE_KEY = import.meta.env.VITE_CAPTURE_KEY || '8c664d67-b863-4f91-9a88-d19b4fdad88e';
+const BRAND_SLUG = import.meta.env.VITE_BRAND_SLUG || 'themetalstore';
 
 // Display-only material metadata (names + descriptions for the UI).
 // Pricing is computed server-side via /api/v1/pricing/landing/compute/.
@@ -18,11 +22,15 @@ const Calculator = () => {
     const [dimensions, setDimensions] = useState({ width: 10, height: 6 });
     const [material, setMaterial] = useState('iron'); // iron, steel, aluminum
     const [design, setDesign] = useState('modern'); // modern, classic, minimal
-    const [contact, setContact] = useState({ email: '', phone: '' });
+    const [contact, setContact] = useState({ name: '', email: '', phone: '' });
     const [showQuote, setShowQuote] = useState(false);
     const [estimate, setEstimate] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState('');
+    const [quotationId, setQuotationId] = useState(null);
+    const inFlight = useRef(false);
 
     const nextStep = () => setStep(prev => prev + 1);
     const prevStep = () => setStep(prev => prev - 1);
@@ -43,6 +51,46 @@ const Calculator = () => {
             setError(err.message || 'Unable to compute price.');
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function handleSubmitForReview() {
+        if (inFlight.current) return;
+        inFlight.current = true;
+        setSubmitting(true);
+        setSubmitError('');
+        try {
+            const line = {
+                params: estimate.source_params || { area_sqft: dimensions.width * dimensions.height, material, design },
+                quantity: estimate.quantity ?? 1,
+                total_price: estimate.total_price,
+                computed_at: estimate.computed_at,
+                signature: estimate.signature,
+            };
+            const r = await fetch(`${API_URL}/api/v1/quotations/from-estimate/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Capture-Key': CAPTURE_KEY },
+                body: JSON.stringify({
+                    brand_slug: BRAND_SLUG,
+                    scope: 'grill',
+                    lines: [line],
+                    contact: { name: contact.name, phone: contact.phone, email: contact.email },
+                }),
+            });
+            if (!r.ok) {
+                const e = await r.json().catch(() => ({}));
+                setSubmitError(e.message || e.error || 'Submit failed.');
+                return;
+            }
+            const body = await r.json();
+            // DRF envelope: {success, data: {quotation_id, inquiry_id}}
+            const qid = body?.data?.quotation_id ?? null;
+            setQuotationId(qid);
+        } catch (err) {
+            setSubmitError(err.message || 'Submit failed.');
+        } finally {
+            setSubmitting(false);
+            inFlight.current = false;
         }
     }
 
@@ -166,6 +214,16 @@ const Calculator = () => {
                                     <p className="text-gray-600 mb-6">Enter your details to reveal the instant estimated cost for this project.</p>
                                     <form onSubmit={handleGetQuote} className="space-y-4">
                                         <div>
+                                            <label className="block text-sm font-bold mb-2">Full Name</label>
+                                            <input
+                                                type="text" required
+                                                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-black"
+                                                placeholder="John Smith"
+                                                value={contact.name}
+                                                onChange={e => setContact({ ...contact, name: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
                                             <label className="block text-sm font-bold mb-2">Email Address</label>
                                             <input
                                                 type="email" required
@@ -229,9 +287,24 @@ const Calculator = () => {
                                             </div>
                                         </div>
 
-                                        <button className="w-full bg-white text-black py-3 rounded-xl font-bold hover:bg-gray-100 transition-colors">
-                                            Book Consultation Call
-                                        </button>
+                                        {quotationId ? (
+                                            <div className="w-full bg-green-500 text-white py-3 rounded-xl font-bold text-center">
+                                                Quotation #{quotationId} created — we&apos;ll be in touch shortly.
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={handleSubmitForReview}
+                                                disabled={submitting}
+                                                className="w-full bg-white text-black py-3 rounded-xl font-bold hover:bg-gray-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                            >
+                                                {submitting ? 'Submitting…' : 'Book Consultation Call'}
+                                            </button>
+                                        )}
+                                        {submitError && (
+                                            <div role="alert" className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
+                                                {submitError}
+                                            </div>
+                                        )}
                                     </div>
                                     <button onClick={() => { setShowQuote(false); setEstimate(null); }} className="mt-4 w-full text-center text-gray-500 underline">
                                         Edit Configuration
