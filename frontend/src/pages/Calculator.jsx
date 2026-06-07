@@ -3,6 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Ruler, CheckCircle2, Calculator as CalcIcon, RefreshCw, ArrowRight, ArrowLeft } from 'lucide-react';
 import Gate3D from '../components/Gate3D'; // We will create this next
 import SEO from '../components/SEO';
+import { computePrice } from '../lib/computePrice';
+
+// Display-only material metadata (names + descriptions for the UI).
+// Pricing is computed server-side via /api/v1/pricing/landing/compute/.
+const MATERIAL_META = [
+    { id: 'iron', name: 'Wrought Iron', desc: 'Classic, heavy, durable.' },
+    { id: 'steel', name: 'Stainless Steel (304)', desc: 'Modern, rust-proof, premium.' },
+    { id: 'aluminum', name: 'Aluminum', desc: 'Lightweight, modern, corrosion-resistant.' },
+];
 
 const Calculator = () => {
     const [step, setStep] = useState(1);
@@ -11,29 +20,35 @@ const Calculator = () => {
     const [design, setDesign] = useState('modern'); // modern, classic, minimal
     const [contact, setContact] = useState({ email: '', phone: '' });
     const [showQuote, setShowQuote] = useState(false);
-
-    const materials = [
-        { id: 'iron', name: 'Wrought Iron', rate: 120, desc: 'Classic, heavy, durable.' },
-        { id: 'steel', name: 'Stainless Steel (304)', rate: 350, desc: 'Modern, rust-proof, premium.' },
-        { id: 'aluminum', name: 'Aluminum', rate: 280, desc: 'Lightweight, modern, corrosion-resistant.' },
-    ];
+    const [estimate, setEstimate] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
     const nextStep = () => setStep(prev => prev + 1);
     const prevStep = () => setStep(prev => prev - 1);
 
-    const calculateEstimate = () => {
-        const area = dimensions.width * dimensions.height;
-        const selectedMat = materials.find(m => m.id === material);
-        const basePrice = area * selectedMat.rate;
-        // Design complexity multipliers
-        const multipliers = { modern: 1.2, classic: 1.5, minimal: 1.0 };
-        return Math.round(basePrice * multipliers[design]);
-    };
-
-    const handleGetQuote = (e) => {
+    async function handleGetQuote(e) {
         e.preventDefault();
-        // Here you would send lead to backend
-        setShowQuote(true);
+        setLoading(true);
+        setError('');
+        try {
+            const priced = await computePrice('grill', {
+                area_sqft: dimensions.width * dimensions.height,
+                material,
+                design,
+            });
+            setEstimate(priced);
+            setShowQuote(true);
+        } catch (err) {
+            setError(err.message || 'Unable to compute price.');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const formatINR = (value) => {
+        const num = Number(value || 0);
+        return num.toLocaleString('en-IN', { maximumFractionDigits: 0 });
     };
 
     return (
@@ -94,7 +109,7 @@ const Calculator = () => {
                                 <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                                     <h2 className="text-2xl font-bold mb-6">Choose Material</h2>
                                     <div className="space-y-4">
-                                        {materials.map(mat => (
+                                        {MATERIAL_META.map(mat => (
                                             <button
                                                 key={mat.id}
                                                 onClick={() => setMaterial(mat.id)}
@@ -170,25 +185,34 @@ const Calculator = () => {
                                                 onChange={e => setContact({ ...contact, phone: e.target.value })}
                                             />
                                         </div>
+                                        {error && (
+                                            <div className="text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
+                                                {error}
+                                            </div>
+                                        )}
                                         <div className="flex gap-4 mt-8">
                                             <button type="button" onClick={prevStep} className="px-6 py-4 rounded-xl font-bold text-gray-500 hover:text-black hover:bg-gray-100">
                                                 Back
                                             </button>
-                                            <button type="submit" className="flex-1 bg-black text-white py-4 rounded-xl font-bold hover:bg-metallic-900 flex items-center justify-center gap-2">
-                                                Safe Estimates <CalcIcon size={18} />
+                                            <button
+                                                type="submit"
+                                                disabled={loading}
+                                                className="flex-1 bg-black text-white py-4 rounded-xl font-bold hover:bg-metallic-900 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                                            >
+                                                {loading ? 'Calculating…' : 'Safe Estimates'} <CalcIcon size={18} />
                                             </button>
                                         </div>
                                     </form>
                                 </motion.div>
                             )}
 
-                            {showQuote && (
+                            {showQuote && estimate && (
                                 <motion.div key="result" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
                                     <div className="bg-black text-white p-8 rounded-2xl text-center shadow-2xl relative overflow-hidden">
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-metallic-700/20 rounded-full blur-3xl" />
                                         <h2 className="text-xl font-medium text-metallic-300 mb-2">Estimated Cost</h2>
-                                        <div className="text-5xl font-bold mb-2 break-words">₹ {calculateEstimate().toLocaleString()}</div>
-                                        <p className="text-sm text-metallic-400 mb-8">*Approximate cost including fabrication. Installation extra.</p>
+                                        <div className="text-5xl font-bold mb-2 break-words">₹ {formatINR(estimate.total_price)}</div>
+                                        <p className="text-sm text-metallic-400 mb-8">*Final price including fabrication. Installation extra.</p>
 
                                         <div className="bg-white/10 rounded-xl p-4 text-left space-y-2 mb-8">
                                             <div className="flex justify-between text-sm">
@@ -197,7 +221,11 @@ const Calculator = () => {
                                             </div>
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-metallic-300">Material</span>
-                                                <span className="font-bold capitalize">{materials.find(m => m.id === material).name}</span>
+                                                <span className="font-bold capitalize">{MATERIAL_META.find(m => m.id === material).name}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-metallic-300">Design</span>
+                                                <span className="font-bold capitalize">{design}</span>
                                             </div>
                                         </div>
 
@@ -205,7 +233,7 @@ const Calculator = () => {
                                             Book Consultation Call
                                         </button>
                                     </div>
-                                    <button onClick={() => setShowQuote(false)} className="mt-4 w-full text-center text-gray-500 underline">
+                                    <button onClick={() => { setShowQuote(false); setEstimate(null); }} className="mt-4 w-full text-center text-gray-500 underline">
                                         Edit Configuration
                                     </button>
                                 </motion.div>
