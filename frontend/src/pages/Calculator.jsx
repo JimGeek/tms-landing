@@ -4,6 +4,10 @@ import { Ruler, CheckCircle2, Calculator as CalcIcon, RefreshCw, ArrowRight, Arr
 import Gate3D from '../components/Gate3D'; // We will create this next
 import SEO from '../components/SEO';
 import { computePrice } from '../lib/computePrice';
+import { useAuth } from '../context/AuthContext';
+import LoginModal from '../components/auth/LoginModal';
+import DriftModal from '../components/DriftModal';
+import { openRazorpayCheckout } from '../lib/razorpay';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.superhomes.app';
 const CAPTURE_KEY = import.meta.env.VITE_CAPTURE_KEY || '8c664d67-b863-4f91-9a88-d19b4fdad88e';
@@ -18,6 +22,7 @@ const MATERIAL_META = [
 ];
 
 const Calculator = () => {
+    const { accessToken } = useAuth();
     const [step, setStep] = useState(1);
     const [dimensions, setDimensions] = useState({ width: 10, height: 6 });
     const [material, setMaterial] = useState('iron'); // iron, steel, aluminum
@@ -31,6 +36,11 @@ const Calculator = () => {
     const [submitError, setSubmitError] = useState('');
     const [quotationId, setQuotationId] = useState(null);
     const inFlight = useRef(false);
+    const [loginOpen, setLoginOpen] = useState(false);
+    const [drift, setDrift] = useState(null);
+    const [paying, setPaying] = useState(false);
+    const [payError, setPayError] = useState('');
+    const payInFlight = useRef(false);
 
     const nextStep = () => setStep(prev => prev + 1);
     const prevStep = () => setStep(prev => prev - 1);
@@ -92,6 +102,105 @@ const Calculator = () => {
             setSubmitting(false);
             inFlight.current = false;
         }
+    }
+
+    async function handlePay(linesOverride) {
+        if (!accessToken) {
+            setLoginOpen(true);
+            setPayError('Please sign in with OTP to continue to payment.');
+            return;
+        }
+        if (payInFlight.current) return;
+        setPayError('');
+        if (!estimate) {
+            setPayError('Estimate is not ready yet.');
+            return;
+        }
+        const line = linesOverride || {
+            params: estimate.source_params || {
+                area_sqft: dimensions.width * dimensions.height,
+                material,
+                design,
+            },
+            quantity: estimate.quantity ?? 1,
+            total_price: estimate.total_price,
+            computed_at: estimate.computed_at,
+            signature: estimate.signature,
+        };
+        payInFlight.current = true;
+        setPaying(true);
+        try {
+            const res = await fetch(`${API_URL}/api/v1/quotations/from-estimate/checkout/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Capture-Key': CAPTURE_KEY,
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    brand_slug: BRAND_SLUG,
+                    scope: 'grill',
+                    lines: [line],
+                    contact: { name: contact.name, phone: contact.phone, email: contact.email },
+                }),
+            });
+            if (res.status === 409) {
+                const body = await res.json().catch(() => ({}));
+                const payload = (body?.data && body.data.error === 'PRICE_DRIFT') ? body.data : body;
+                setDrift(payload);
+                return;
+            }
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                setPayError(err.message || err.error || 'Checkout failed. Please try again.');
+                return;
+            }
+            const body = await res.json();
+            const handle = body?.data;
+            if (!handle?.razorpay_order_id) {
+                setPayError('Checkout returned an unexpected response.');
+                return;
+            }
+            await openRazorpayCheckout(handle, {
+                prefill: { name: contact.name, email: contact.email, contact: contact.phone },
+                onSuccess: () => {
+                    setQuotationId(handle.quotation_id);
+                    setSubmitError('');
+                    // Show success state — reuse the existing setSubmitting-friendly UI
+                },
+                onDismiss: () => {
+                    setPayError('Payment was not completed. You can retry from this page.');
+                },
+            });
+        } catch (e) {
+            setPayError((e && e.message) || 'Something went wrong.');
+        } finally {
+            setPaying(false);
+            payInFlight.current = false;
+        }
+    }
+
+    function continueAtNewPrice(newSignatures) {
+        // Single-line scope: only the first new_signature is relevant.
+        const fresh = newSignatures[0];
+        if (!fresh) { setDrift(null); return; }
+        const resubmitLine = {
+            params: fresh.params,
+            quantity: fresh.quantity,
+            total_price: fresh.total_price,
+            computed_at: fresh.computed_at,
+            signature: fresh.signature,
+        };
+        // Mirror into estimate state so the UI reflects the new total.
+        setEstimate((prev) => prev ? { ...prev,
+            total_price: fresh.total_price,
+            computed_at: fresh.computed_at,
+            signature: fresh.signature,
+            source_params: fresh.params,
+            quantity: fresh.quantity,
+        } : prev);
+        setDrift(null);
+        handlePay(resubmitLine);
     }
 
     const formatINR = (value) => {
@@ -305,6 +414,21 @@ const Calculator = () => {
                                                 {submitError}
                                             </div>
                                         )}
+                                        {estimate?.self_pay_allowed && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handlePay()}
+                                                disabled={paying || submitting}
+                                                className="w-full mt-3 bg-black text-white py-3 rounded-xl font-bold hover:bg-metallic-900 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                            >
+                                                {paying ? 'Processing…' : 'Continue to payment →'}
+                                            </button>
+                                        )}
+                                        {payError && (
+                                            <div role="alert" className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
+                                                {payError}
+                                            </div>
+                                        )}
                                     </div>
                                     <button onClick={() => { setShowQuote(false); setEstimate(null); setQuotationId(null); setSubmitError(''); }} className="mt-4 w-full text-center text-gray-500 underline">
                                         Edit Configuration
@@ -315,6 +439,8 @@ const Calculator = () => {
                     </div>
                 </div>
             </div>
+        <DriftModal drift={drift} onContinue={continueAtNewPrice} onCancel={() => setDrift(null)} />
+        <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
         </div>
     );
 };
