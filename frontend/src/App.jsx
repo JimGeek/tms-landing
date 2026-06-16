@@ -12,6 +12,7 @@ import Store from './pages/Store';
 import StoreProductDetail from './pages/StoreProductDetail';
 import AboutUs from './pages/AboutUs';
 import Calculator from './pages/Calculator';
+import Quote from './pages/Quote';
 import CheckoutSuccess from './pages/CheckoutSuccess';
 import { initAnalytics, trackPageView } from './utils/analytics';
 import SEO from './components/SEO';
@@ -56,6 +57,7 @@ function App() {
                 <Route path="store/product/:slug" element={<StoreProductDetail />} />
                 <Route path="about" element={<AboutUs />} />
                 <Route path="calculator" element={<Calculator />} />
+                <Route path="quote" element={<Quote />} />
               </Route>
               <Route path="/checkout/success" element={<CheckoutSuccess />} />
             </Routes>
