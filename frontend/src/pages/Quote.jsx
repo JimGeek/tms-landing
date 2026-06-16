@@ -80,8 +80,12 @@ export default function Quote() {
   const [checkoutError, setCheckoutError] = useState('');
 
   // ── Store ──
-  const cartLines = useQuoteStore((s) => s.cartLines());
-  const itemCount = useQuoteStore((s) => s.itemCount());
+  // Select the stable `cart` object and derive lines/count in render. (Calling
+  // a selector that returns a NEW array each time — s.cartLines() — caused an
+  // infinite re-render: React #185.)
+  const cart = useQuoteStore((s) => s.cart);
+  const cartLines = Object.values(cart);
+  const itemCount = cartLines.reduce((sum, l) => sum + l.quantity, 0);
   const {
     draftId,
     frozenTotal,
